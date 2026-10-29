@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Security Operations Dashboard{% endblock %}
+
+{% block content %}
+<!-- Metrics Counters Grid (Live from SQLite) -->
+<div class="metrics-grid">
+    <div class="metric-card total">
+        <span class="metric-badge"></span>
+        <span class="metric-label">Total Inspected</span>
+        <span class="metric-value">{{ stats.total_inspected }}</span>
+        <span class="dropzone-hint" style="margin: 0;">Evaluated via Policy Engine</span>
+    </div>
+    <div class="metric-card accepted">
+        <span class="metric-badge"></span>
+        <span class="metric-label">Accepted Files</span>
+        <span class="metric-value" style="color: var(--color-accepted);">{{ stats.accepted_count }}</span>
+        <span class="dropzone-hint" style="margin: 0;">Policy & Signature Verified</span>
+    </div>
+    <div class="metric-card rejected">
+        <span class="metric-badge"></span>
+        <span class="metric-label">Rejected Files</span>
+        <span class="metric-value" style="color: var(--color-rejected);">{{ stats.rejected_count }}</span>
+        <span class="dropzone-hint" style="margin: 0;">Policy Violations Intercepted</span>
+    </div>
+    <div class="metric-card review">
+        <span class="metric-badge"></span>
+        <span class="metric-label">Requires Review</span>
+        <span class="metric-value" style="color: var(--color-review);">{{ stats.review_count }}</span>
+        <span class="dropzone-hint" style="margin: 0;">Ambiguous / High Risk Warning</span>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px;">
+    <!-- Recent Inspection Activity -->
+    <div class="card" style="margin-bottom: 0;">
+        <div class="card-header">
+            <h2 class="card-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                </svg>
+                Recent Inspection Activity
+            </h2>
+            <a href="{{ url_for('history_page') }}" class="btn btn-secondary btn-sm">View All</a>
+        </div>
+        <div class="card-body" style="padding: 0;">
+            {% if stats.recent_inspections %}
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Filename</th>
+                                <th>Detected Type</th>
+                                <th>Risk Score</th>
+                                <th>Verdict</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for insp in stats.recent_inspections %}
+                                <tr>
+                                    <td style="color: var(--text-muted); font-size: 0.8rem;">
+                                        {{ insp.timestamp[:19].replace('T', ' ') }}
+                                    </td>
+                                    <td>
+                                        <strong>{{ insp.original_filename }}</strong>
+                                        <div class="code-cell" style="font-size: 0.72rem; color: var(--text-muted);">
+                                            {{ insp.sha256_hash[:16] }}...
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-severity-info">{{ insp.detected_type }}</span>
+                                    </td>
+                                    <td>
+                                        <strong style="color: {% if insp.risk_score >= 50 %}var(--color-rejected){% elif insp.risk_score >= 20 %}var(--color-review){% else %}var(--color-accepted){% endif %};">
+                                            {{ insp.risk_score }}/100
+                                        </strong>
+                                    </td>
+                                    <td>
+                                        {% if insp.decision == 'ACCEPTED' %}
+                                            <span class="badge badge-accepted" style="display: inline-flex; align-items: center; gap: 4px;">
+                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                                                ACCEPTED
+                                            </span>
+                                        {% elif insp.decision == 'REJECTED' %}
+                                            <span class="badge badge-rejected" style="display: inline-flex; align-items: center; gap: 4px;">
+                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                                                REJECTED
+                                            </span>
+                                        {% else %}
+                                            <span class="badge badge-review" style="display: inline-flex; align-items: center; gap: 4px;">
+                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                                REVIEW REQUIRED
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('inspection_detail', inspection_id=insp.id) }}" class="btn btn-secondary btn-sm">Audit</a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                    <p style="font-size: 1rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">No inspections recorded yet</p>
+                    <p style="font-size: 0.82rem; margin-bottom: 16px;">Submit a sample file to execute live signature detection and policy checks.</p>
+                    <a href="{{ url_for('upload_page') }}" class="btn btn-primary btn-sm">Inspect First File</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Quick CTA & File Type Breakdown -->
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+        <!-- Upload CTA Box -->
+        <div class="card" style="margin-bottom: 0;">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" x2="12" y1="3" y2="15"/>
+                    </svg>
+                    File Inspection Scanner
+                </h3>
+            </div>
+            <div class="card-body">
+                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 16px;">
+                    Perform deep header magic-bytes analysis, path traversal audits, and MIME cross-checks against organization policies.
+                </p>
+                <a href="{{ url_for('upload_page') }}" class="btn btn-primary" style="width: 100%;">
+                    Launch File Inspector
+                </a>
+            </div>
+        </div>
+
+        <!-- File Type Distribution -->
+        <div class="card" style="margin-bottom: 0;">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 2a10 10 0 0 1 10 10h-10z"/>
+                    </svg>
+                    File Type Distribution
+                </h3>
+            </div>
+            <div class="card-body">
+                {% if stats.type_distribution %}
+                    {% for ftype, count in stats.type_distribution.items() %}
+                        {% set pct = ((count / stats.total_inspected * 100) | round(1)) if stats.total_inspected > 0 else 0 %}
+                        <div class="type-dist-item">
+                            <div class="type-dist-labels">
+                                <span style="font-weight: 600; text-transform: uppercase;">{{ ftype }}</span>
+                                <span style="color: var(--text-muted);">{{ count }} ({{ pct }}%)</span>
+                            </div>
+                            <div class="type-dist-bar">
+                                <div class="type-dist-fill" style="width: {{ pct }}%;"></div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 12px 0;">
+                        No format distribution data yet.
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Security Findings -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                <line x1="12" x2="12" y1="9" y2="13"/>
+                <line x1="12" x2="12.01" y1="17" y2="17"/>
+            </svg>
+            Recent Security Findings & Anomalies
+        </h2>
+    </div>
+    <div class="card-body">
+        {% if stats.recent_findings %}
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px;">
+                {% for finding in stats.recent_findings %}
+                    <div class="finding-card {% if finding.severity in ['CRITICAL', 'HIGH'] %}fail{% else %}warn{% endif %}">
+                        <div class="finding-header">
+                            <div>
+                                <span class="finding-rule">{{ finding.rule_id }}</span>
+                                <span class="finding-title">{{ finding.title }}</span>
+                            </div>
+                            <span class="badge badge-severity-{{ finding.severity.lower() }}">{{ finding.severity }}</span>
+                        </div>
+                        <div class="finding-detail-item">
+                            <span class="finding-detail-label">Target File:</span>
+                            <span>{{ finding.filename }}</span>
+                        </div>
+                        <div class="finding-detail-item">
+                            <span class="finding-detail-label">Evidence:</span>
+                            <span style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-code);">{{ finding.evidence }}</span>
+                        </div>
+                        <div style="margin-top: 10px; text-align: right;">
+                            <a href="{{ url_for('inspection_detail', inspection_id=finding.inspection_id) }}" class="btn btn-secondary btn-sm">Review Audit Log</a>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p style="color: var(--text-muted); font-size: 0.88rem; text-align: center; padding: 20px 0;">
+                No security violations or policy warnings flagged in recent files.
+            </p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

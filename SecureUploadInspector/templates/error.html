@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Error {{ error_code }}{% endblock %}
+{% block page_title %}Security Alert - Error {{ error_code }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 40px auto; text-align: center;">
+    <div class="card">
+        <div class="card-body" style="padding: 48px 32px;">
+            <div style="width: 64px; height: 64px; border-radius: 50%; background-color: var(--color-rejected-bg); border: 1px solid var(--color-rejected-border); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: var(--color-rejected);">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+            </div>
+            
+            <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 8px;">
+                {{ error_title or "Security Exception Encountered" }}
+            </h2>
+            <div class="badge badge-rejected" style="margin-bottom: 16px;">
+                HTTP {{ error_code }}
+            </div>
+
+            <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 28px;">
+                {{ error_message or "The requested action violated security constraints or the resource was not found." }}
+            </p>
+
+            <div style="display: flex; justify-content: center; gap: 12px;">
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">Return to Dashboard</a>
+                <a href="{{ url_for('upload_page') }}" class="btn btn-primary">Try New Inspection</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

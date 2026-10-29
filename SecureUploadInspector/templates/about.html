@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}About Project{% endblock %}
+{% block page_title %}About SecureUpload Inspector{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px;">
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="16" x2="12" y2="12"/>
+                    <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                Academic Cybersecurity Micro Project Overview
+            </h2>
+        </div>
+        <div class="card-body" style="font-size: 0.9rem; line-height: 1.7; color: var(--text-secondary);">
+            <p style="margin-bottom: 16px;">
+                <strong>SecureUpload Inspector</strong> is a file upload security and validation system
+                engineered to address one of the most critical web application security vectors: untrusted file ingestion.
+                According to the OWASP Top 10 and CWE-434 (Unrestricted Upload of File with Dangerous Type), insecure file uploads
+                often lead to Remote Code Execution (RCE), Server-Side Request Forgery (SSRF), Denial of Service (DoS), and directory traversal attacks.
+            </p>
+
+            <h3 style="color: var(--text-primary); font-size: 1.05rem; margin: 20px 0 8px;">Multi-Vector Inspection Architecture</h3>
+            <p style="margin-bottom: 14px;">
+                This system implements defense-in-depth through five concurrent validation layers:
+            </p>
+            <ol style="margin-left: 20px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px;">
+                <li><strong>Cryptographic Integrity:</strong> Incremental 64KB chunked SHA-256 calculation for non-blocking stream digestion and forensic fingerprinting.</li>
+                <li><strong>Filename Sanitization & Traversal Defense:</strong> Rejection of path traversal sequences (<code>..</code>, <code>/</code>, <code>\</code>), null bytes (<code>\x00</code>), and executable double extensions (e.g., <code>.pdf.exe</code>).</li>
+                <li><strong>Magic Byte Signature Verification:</strong> Low-level inspection of file headers (PDF <code>%PDF-</code>, PNG 8-byte signature, JPEG SOI <code>FF D8 FF</code>, cautious text heuristics).</li>
+                <li><strong>MIME Cross-Validation:</strong> Identifying discrepancies between client-declared <code>Content-Type</code> headers, filename extensions, and genuine byte signatures.</li>
+                <li><strong>Deterministic Policy Engine:</strong> Rule-based evaluation delivering <code>ACCEPTED</code>, <code>REJECTED</code>, or <code>REVIEW_REQUIRED</code> decisions alongside an auditable heuristic risk score.</li>
+            </ol>
+
+            <div class="security-disclaimer" style="margin-top: 24px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 24px; height: 24px; color: var(--brand-accent);">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                <div>
+                    <strong>Mandatory Academic Security Assertion:</strong>
+                    File validation confirms structural compliance with file format specifications and organizational upload policies.
+                    It <strong>does not claim or guarantee that a validated file is malware-free</strong>. Sophisticated exploits (such as PDF JavaScript payloads, font vulnerabilities, or stenographic polyglots) can reside inside structurally valid files. True defense requires supplementary sandboxed dynamic analysis and runtime privilege separation.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Security Policies & Settings{% endblock %}
+{% block page_title %}Upload Security Policies & Configuration{% endblock %}
+
+{% block content %}
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+    <!-- Editable Security Policies Form -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+                Configurable Upload Policy Controls
+            </h2>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('settings_page') }}">
+                {% if csrf_token %}
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% endif %}
+
+                <!-- Max File Size Limit (MB) -->
+                <div class="form-group">
+                    <label class="form-label" for="max_file_size_mb">Individual File Size Boundary (MB):</label>
+                    <input type="number" id="max_file_size_mb" name="max_file_size_mb" class="form-input" min="1" max="50" value="{{ settings.get('max_file_size_mb', 10) }}" required style="max-width: 220px;">
+                    <div class="form-helper">
+                        Allowed range: 1 MB to 50 MB. Files exceeding this threshold are immediately rejected (POL-SIZE-002).
+                    </div>
+                </div>
+
+                <!-- Max Files Per Request -->
+                <div class="form-group">
+                    <label class="form-label" for="max_files_per_request">Maximum Files Per Upload Request:</label>
+                    <input type="number" id="max_files_per_request" name="max_files_per_request" class="form-input" min="1" max="10" value="{{ settings.get('max_files_per_request', 5) }}" required style="max-width: 220px;">
+                    <div class="form-helper">
+                        Limits simultaneous ingestion to prevent server thread exhaustion (1 to 10 files).
+                    </div>
+                </div>
+
+                <!-- Allowed Extensions Selection (Predefined Safe Set Only) -->
+                <div class="form-group">
+                    <label class="form-label">Permitted Extensions Allowlist (POL-EXT-001):</label>
+                    <div class="form-helper" style="margin-bottom: 10px;">
+                        Selected from validated safe formats. Arbitrary unsafe extensions cannot be added.
+                    </div>
+                    {% set current_allowed = settings.get('allowed_extensions', ['.pdf', '.png', '.jpg', '.jpeg', '.txt']) %}
+                    <div class="checkbox-group">
+                        {% for ext in predefined_extensions %}
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="allowed_extensions" value="{{ ext }}" {% if ext in current_allowed %}checked{% endif %}>
+                                <strong style="font-family: var(--font-mono); color: var(--text-primary);">{{ ext }}</strong>
+                            </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Ambiguous Signatures Review -->
+                <div class="form-group">
+                    <label class="form-label">Ambiguous Signature Handling:</label>
+                    <label class="checkbox-label" style="display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px;">
+                        <input type="checkbox" name="require_review_ambiguous" value="true" {% if settings.get('require_review_ambiguous', true) %}checked{% endif %} style="margin-top: 3px;">
+                        <div>
+                            <strong>Require Administrative Review for Ambiguous Signatures</strong>
+                            <div class="form-helper">
+                                When enabled, files with medium or cautious certainty (e.g. text heuristics or minor MIME variances) receive REVIEW_REQUIRED rather than automatic approval.
+                            </div>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- Discard Rejected vs Quarantine -->
+                <div class="form-group">
+                    <label class="form-label">Rejected Files Storage Policy:</label>
+                    <label class="checkbox-label" style="display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px;">
+                        <input type="checkbox" name="discard_rejected" value="true" {% if settings.get('discard_rejected', false) %}checked{% endif %} style="margin-top: 3px;">
+                        <div>
+                            <strong>Discard Rejected Files Immediately</strong>
+                            <div class="form-helper">
+                                If checked, rejected files are purged from disk immediately. If unchecked, rejected files are isolated in private non-executable quarantine for demonstration analysis.
+                            </div>
+                        </div>
+                    </label>
+                </div>
+
+                <div style="margin-top: 28px; display: flex; justify-content: flex-end; gap: 12px;">
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary">
+                        Save Security Configuration
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Active Immutable Constraints Summary -->
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                    Mandatory Invariant Rules
+                </h3>
+            </div>
+            <div class="card-body">
+                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 14px;">
+                    These foundational defenses are permanent and cannot be bypassed:
+                </p>
+                <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 0.82rem;">
+                    <li style="display: flex; gap: 8px;">
+                        <span style="color: var(--color-rejected); font-weight: bold;">&bull;</span>
+                        <span><strong>Path Traversal Defense:</strong> Rejection of <code>..</code>, slashes, and reserved Windows device names.</span>
+                    </li>
+                    <li style="display: flex; gap: 8px;">
+                        <span style="color: var(--color-rejected); font-weight: bold;">&bull;</span>
+                        <span><strong>Zero-Byte Rejection:</strong> 0-byte uploads are unconditionally blocked.</span>
+                    </li>
+                    <li style="display: flex; gap: 8px;">
+                        <span style="color: var(--color-rejected); font-weight: bold;">&bull;</span>
+                        <span><strong>Signature Mismatch:</strong> Declared extensions conflicting with header magic bytes are blocked.</span>
+                    </li>
+                    <li style="display: flex; gap: 8px;">
+                        <span style="color: var(--color-rejected); font-weight: bold;">&bull;</span>
+                        <span><strong>Disguised Executables:</strong> Double extensions with executable segments (e.g. <code>.pdf.exe</code>) are intercepted.</span>
+                    </li>
+                    <li style="display: flex; gap: 8px;">
+                        <span style="color: var(--color-rejected); font-weight: bold;">&bull;</span>
+                        <span><strong>Storage Segregation:</strong> Rejected files NEVER enter accepted storage under any circumstances.</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                    </svg>
+                    Storage Vault Security
+                </h3>
+            </div>
+            <div class="card-body" style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.6;">
+                <p style="margin-bottom: 8px;">
+                    Uploaded files are given random UUID names and stored outside the public document root (<code>instance/</code>).
+                </p>
+                <p>
+                    Files are non-executable, not indexed by web servers, and cannot be accessed via direct public URLs.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

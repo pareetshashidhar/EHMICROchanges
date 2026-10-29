@@ -1,0 +1,78 @@
+# ==============================================================================
+# EHMICRO / SecureUpload Inspector - Version Control Exclusion (.gitignore)
+# ==============================================================================
+
+# Python Bytecode & Interpreter Caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+
+# Testing & Pytest Caches
+.pytest_cache/
+.coverage
+htmlcov/
+.cache/
+
+# Sensitive Environment Configurations
+.env
+.env.*
+!.env.example
+
+# Instance Database Files (SQLite)
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+**/instance/*.db
+**/instance/*.db-shm
+**/instance/*.db-wal
+**/instance/*.sqlite
+**/instance/*.sqlite3
+**/data/*.db
+
+# Uploaded Files & Quarantine (Isolated Vaults)
+**/instance/accepted_uploads/
+**/instance/quarantine/
+**/instance/test_accepted/
+**/instance/test_quarantine/
+uploads/
+quarantine/
+*.accepted
+*.quarantine
+
+# Temporary Files & Staging Writes
+**/instance/temp_uploads/
+*.tmp
+*.tmp_*
+tmp/
+temp/
+
+# Private Logs & Audit Trails
+*.log
+**/instance/*.log
+**/instance/audit.log
+**/instance/test_audit.log
+
+# Generated Reports Containing Potentially Sensitive Data
+reports/
+**/instance/reports/
+*.report.json
+*.audit-report.txt
+
+# OS Generated Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+.venv/
+__pycache__/
+.pytest_cache/

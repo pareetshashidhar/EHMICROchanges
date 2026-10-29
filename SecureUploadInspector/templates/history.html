@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Inspection History{% endblock %}
+{% block page_title %}Audit Log & Historical Inspections{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header" style="flex-wrap: wrap; gap: 16px;">
+        <h2 class="card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            Historical Inspection Records
+            {% if pagination and pagination.total %}
+                <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-muted);">
+                    ({{ pagination.total }} total)
+                </span>
+            {% endif %}
+        </h2>
+
+        <!-- Interactive Search & Filtering Form -->
+        <form method="GET" action="{{ url_for('history_page') }}" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <input type="text" name="q" id="history-search" value="{{ current_query or '' }}" placeholder="Search filename or hash..." style="background-color: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px 14px; border-radius: var(--radius-sm); font-size: 0.85rem; min-width: 200px;">
+            
+            <select name="decision" id="history-decision-filter" style="background-color: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px 14px; border-radius: var(--radius-sm); font-size: 0.85rem;">
+                <option value="ALL" {% if current_decision == 'ALL' %}selected{% endif %}>All Decisions</option>
+                <option value="ACCEPTED" {% if current_decision == 'ACCEPTED' %}selected{% endif %}>Accepted Only</option>
+                <option value="REJECTED" {% if current_decision == 'REJECTED' %}selected{% endif %}>Rejected Only</option>
+                <option value="REVIEW_REQUIRED" {% if current_decision == 'REVIEW_REQUIRED' %}selected{% endif %}>Review Required</option>
+            </select>
+
+            <select name="file_type" id="history-type-filter" style="background-color: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px 14px; border-radius: var(--radius-sm); font-size: 0.85rem;">
+                <option value="ALL" {% if current_type == 'ALL' %}selected{% endif %}>All Formats</option>
+                <option value="pdf" {% if current_type == 'pdf' %}selected{% endif %}>PDF</option>
+                <option value="png" {% if current_type == 'png' %}selected{% endif %}>PNG</option>
+                <option value="jpeg" {% if current_type == 'jpeg' %}selected{% endif %}>JPEG</option>
+                <option value="probable_text" {% if current_type == 'probable_text' %}selected{% endif %}>Probable Text</option>
+                <option value="unknown" {% if current_type == 'unknown' %}selected{% endif %}>Unknown/Blocked</option>
+            </select>
+
+            <button type="submit" class="btn btn-secondary btn-sm">Filter</button>
+            {% if current_query or (current_decision and current_decision != 'ALL') or (current_type and current_type != 'ALL') %}
+                <a href="{{ url_for('history_page') }}" class="btn btn-secondary btn-sm" style="color: var(--text-muted);">Reset</a>
+            {% endif %}
+        </form>
+    </div>
+
+    <div class="card-body" style="padding: 0;">
+        {% if inspections %}
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Original Filename</th>
+                            <th>Detected Type</th>
+                            <th>Declared MIME</th>
+                            <th>Size</th>
+                            <th>SHA-256 Digest</th>
+                            <th>Risk Score</th>
+                            <th>Verdict</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-table-body">
+                        {% for insp in inspections %}
+                            <tr class="history-row" data-filename="{{ insp.original_filename }}" data-hash="{{ insp.sha256_hash }}" data-decision="{{ insp.decision }}">
+                                <td style="color: var(--text-muted); font-size: 0.8rem; white-space: nowrap;">
+                                    {{ (insp.created_at or insp.timestamp)[:19].replace('T', ' ') }}
+                                </td>
+                                <td>
+                                    <strong>{{ insp.original_filename }}</strong>
+                                </td>
+                                <td>
+                                    <span class="badge badge-severity-info">{{ insp.detected_type }}</span>
+                                </td>
+                                <td style="color: var(--text-muted); font-size: 0.8rem; font-family: var(--font-mono);">
+                                    {{ insp.declared_mime_type or insp.browser_mime or 'None' }}
+                                </td>
+                                <td style="color: var(--text-muted); font-size: 0.8rem; white-space: nowrap;">
+                                    {{ "{:,}".format(insp.file_size) }} B
+                                </td>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                        <span class="code-cell" style="font-size: 0.75rem;">{{ insp.sha256_hash[:12] }}...</span>
+                                        <button class="btn btn-secondary btn-sm copy-btn" data-copy-target="{{ insp.sha256_hash }}" style="padding: 2px 6px; font-size: 0.7rem;">
+                                            Copy
+                                        </button>
+                                    </div>
+                                </td>
+                                <td>
+                                    <strong style="color: {% if insp.risk_score >= 50 %}var(--color-rejected){% elif insp.risk_score >= 20 %}var(--color-review){% else %}var(--color-accepted){% endif %};">
+                                        {{ insp.risk_score }}/100
+                                    </strong>
+                                </td>
+                                <td>
+                                    {% if insp.decision == 'ACCEPTED' %}
+                                        <span class="badge badge-accepted" style="display: inline-flex; align-items: center; gap: 4px;">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                                            ACCEPTED
+                                        </span>
+                                    {% elif insp.decision == 'REJECTED' %}
+                                        <span class="badge badge-rejected" style="display: inline-flex; align-items: center; gap: 4px;">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                                            REJECTED
+                                        </span>
+                                    {% else %}
+                                        <span class="badge badge-review" style="display: inline-flex; align-items: center; gap: 4px;">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                            REVIEW REQUIRED
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('inspection_detail', inspection_id=insp.id) }}" class="btn btn-secondary btn-sm">
+                                        View Report
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Server-Side Pagination Bar -->
+            {% if pagination and pagination.total_pages > 1 %}
+                <div class="pagination-container">
+                    <div class="page-status">
+                        Showing page <strong>{{ pagination.page }}</strong> of <strong>{{ pagination.total_pages }}</strong> ({{ pagination.total }} items)
+                    </div>
+                    <div class="pagination-controls">
+                        <a href="{{ url_for('history_page', page=pagination.prev_page, per_page=pagination.per_page, decision=current_decision, file_type=current_type, q=current_query) }}" class="page-btn {% if not pagination.has_prev %}disabled{% endif %}">
+                            &larr; Previous
+                        </a>
+                        <span style="font-size: 0.82rem; font-weight: 600; padding: 0 8px;">
+                            {{ pagination.page }}
+                        </span>
+                        <a href="{{ url_for('history_page', page=pagination.next_page, per_page=pagination.per_page, decision=current_decision, file_type=current_type, q=current_query) }}" class="page-btn {% if not pagination.has_next %}disabled{% endif %}">
+                            Next &rarr;
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+
+        {% else %}
+            <div class="empty-state">
+                <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                </svg>
+                <p style="font-size: 1rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">No matching historical records</p>
+                <p style="font-size: 0.82rem; margin-bottom: 16px;">Try adjusting search keywords or clearing active filters.</p>
+                <a href="{{ url_for('upload_page') }}" class="btn btn-primary btn-sm">Inspect New File</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
