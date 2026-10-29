@@ -51,7 +51,7 @@
                         {% for ext in predefined_extensions %}
                             <label class="checkbox-label">
                                 <input type="checkbox" name="allowed_extensions" value="{{ ext }}" {% if ext in current_allowed %}checked{% endif %}>
-                                <strong style="font-family: var(--font-mono); color: var(--teal-primary);">{{ ext }}</strong>
+                                <strong style="font-family: var(--font-mono); color: var(--text-primary);">{{ ext }}</strong>
                             </label>
                         {% endfor %}
                     </div>
